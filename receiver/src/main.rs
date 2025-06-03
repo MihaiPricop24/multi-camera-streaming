@@ -371,18 +371,18 @@ impl ReceiverApp {
         self.receive_threads[camera_index] = Some(thread::spawn(move || {
             let cmd = format!(
                 "gst-launch-1.0 --gst-debug=raptorqdec:5 \
-                rtpbin latency=150 fec-decoders=\"fec,0=\\\"raptorqdec\\ repair-window-tolerance\\=150\\\";\" name=rtp \
+                rtpbin latency=200 fec-decoders=\"fec,0=\\\"raptorqdec\\ repair-window-tolerance\\=200\\\";\" name=rtp \
                 udpsrc port={} \
-                caps=\"application/x-rtp, payload=96, raptor-scheme-id=(string)6, repair-window=(string)150000, t=(string)1344\" ! \
+                caps=\"application/x-rtp, payload=96, raptor-scheme-id=(string)6, repair-window=(string)200000, t=(string)1344\" ! \
                 queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! rtp.recv_fec_sink_0_0 \
                 udpsrc port={} \
                 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=mp2t, payload=33\" ! \
                 queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! \
-                netsim drop-probability=0.5 duplicate-probability=0.1 delay-distribution=normal ! \
+                netsim drop-probability=0 duplicate-probability=0 delay-distribution=normal ! \
                 rtp.recv_rtp_sink_0 \
                 rtp. ! rtpjitterbuffer latency=600 do-lost=true ! rtpmp2tdepay ! \
                 tsdemux ! h264parse ! avdec_h264 max-threads=4 ! videoconvert ! videorate ! \
-                video/x-raw,framerate=30/1 ! autovideosink sync=false",
+                video/x-raw,framerate=15/1 ! autovideosink sync=false",
                 fec_port, rtp_port
             );
 
@@ -441,7 +441,7 @@ impl ReceiverApp {
                         if let Some(gst_process_pid) = *gst_pid.lock().unwrap() {
                             let _ = Command::new("taskkill")
                                 .args(&["/F", "/PID", &gst_process_pid.to_string()])
-                                .spawn();
+                                .output();
                         }
 
                         // Also kill the cmd process
@@ -465,6 +465,11 @@ impl ReceiverApp {
     fn stop_pipeline(&mut self, camera_index: usize) {
         *self.receiving[camera_index].lock().unwrap() = false;
 
+        // Kill all GStreamer processes (reliable approach)
+        let _ = Command::new("taskkill")
+            .args(&["/F", "/IM", "gst-launch-1.0.exe"])
+            .output(); // ← Use .output() instead of .spawn()
+
         let button = match camera_index {
             0 => &self.start_button_1,
             1 => &self.start_button_2,
@@ -476,7 +481,6 @@ impl ReceiverApp {
 
         // Wait for thread to finish and clean up
         if let Some(handle) = self.receive_threads[camera_index].take() {
-            // Give it a moment to stop gracefully, then force join
             std::thread::sleep(std::time::Duration::from_millis(500));
             let _ = handle.join();
         }

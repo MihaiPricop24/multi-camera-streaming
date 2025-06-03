@@ -315,15 +315,15 @@ impl SenderApp {
         self.stream_threads[camera_index] = Some(thread::spawn(move || {
             let cmd = format!(
                 "gst-launch-1.0 \
-                rtpbin name=rtp latency=150 \
-                fec-encoders=\"fec,0=\\\"raptorqenc\\ mtu\\=1356\\ symbol-size\\=1344\\ \
-                protected-packets\\=5\\ repair-packets\\=500\\ repair-window\\=150\\\";\" \
-                ksvideosrc device-index=0 ! \
-                videoconvert ! videorate ! video/x-raw,framerate=30/1,width=640,height=480 ! \
-                x264enc key-int-max=45 tune=zerolatency speed-preset=veryfast bitrate=2000 ! \
-                queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! mpegtsmux ! rtpmp2tpay ssrc={} ! \
-                rtp.send_rtp_sink_0 rtp.send_rtp_src_0 ! udpsink host={} port={} sync=false \
-                rtp.send_fec_src_0_0 ! udpsink host={} port={} async=false sync=false",
+    rtpbin name=rtp latency=150 \
+    fec-encoders=\"fec,0=\\\"raptorqenc\\ mtu\\=1356\\ symbol-size\\=1344\\ \
+    protected-packets\\=10\\ repair-packets\\=1000\\ repair-window\\=200\\\";\" \
+    ksvideosrc device-index=0 ! \
+    videoconvert ! videorate ! video/x-raw,framerate=15/1,width=640,height=480 ! \
+    x264enc key-int-max=45 tune=zerolatency speed-preset=veryfast bitrate=2000 ! \
+    queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! mpegtsmux ! rtpmp2tpay ssrc={} ! \
+    rtp.send_rtp_sink_0 rtp.send_rtp_src_0 ! udpsink host={} port={} sync=false \
+    rtp.send_fec_src_0_0 ! udpsink host={} port={} async=false sync=false",
                 camera_index, ip, port, ip, fec_port
             );
 
