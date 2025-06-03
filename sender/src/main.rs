@@ -311,6 +311,7 @@ impl SenderApp {
         button.set_text("Stop");
 
         let streaming = Arc::clone(&self.streaming[camera_index]);
+        let gst_pid = Arc::clone(&self.gst_pids[camera_index]);
         self.stream_threads[camera_index] = Some(thread::spawn(move || {
             let cmd = format!(
                 "gst-launch-1.0 \
@@ -327,6 +328,34 @@ impl SenderApp {
             );
 
             if let Ok(mut child) = Command::new("cmd").args(&["/C", &cmd]).spawn() {
+                let cmd_pid = child.id();
+
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                if let Ok(output) = Command::new("wmic")
+                    .args(&[
+                        "process",
+                        "where",
+                        &format!("ParentProcessId={}", cmd_pid),
+                        "get",
+                        "ProcessId",
+                        "/format:csv",
+                    ])
+                    .output()
+                {
+                    let output_str = String::from_utf8_lossy(&output.stdout);
+                    for line in output_str.lines() {
+                        if line.contains("ProcessId") && !line.contains("Node") {
+                            if let Some(pid_str) = line.split(',').nth(1) {
+                                if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                                    *gst_pid.lock().unwrap() = Some(pid); // ← STORE THE PID
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 loop {
                     if !*streaming.lock().unwrap() {
                         let _ = child.kill();
@@ -339,12 +368,39 @@ impl SenderApp {
                         Err(_) => break,
                     }
                 }
+                *gst_pid.lock().unwrap() = None;
             }
         }));
     }
 
     fn stop_pipeline(&mut self, camera_index: usize) {
+        println!("Stop button clicked for camera {}", camera_index);
+
         *self.streaming[camera_index].lock().unwrap() = false;
+        println!("Set streaming flag to false");
+
+        // Check if we have a PID stored
+        if let Some(gst_process_pid) = *self.gst_pids[camera_index].lock().unwrap() {
+            println!(
+                "Found stored PID: {}, attempting to kill...",
+                gst_process_pid
+            );
+            let result = Command::new("taskkill")
+                .args(&["/F", "/PID", &gst_process_pid.to_string()])
+                .output();
+            match result {
+                Ok(output) => println!(
+                    "Taskkill result: {}",
+                    String::from_utf8_lossy(&output.stdout)
+                ),
+                Err(e) => println!("Taskkill failed: {}", e),
+            }
+        } else {
+            println!("No PID stored, trying brute force kill of all gst-launch processes");
+            let _ = Command::new("taskkill")
+                .args(&["/F", "/IM", "gst-launch-1.0.exe"])
+                .spawn();
+        }
 
         let button = match camera_index {
             0 => &self.start_button_1,
@@ -354,12 +410,13 @@ impl SenderApp {
             _ => return,
         };
         button.set_text("Start");
+        println!("Changed button text to Start");
 
-        // Wait for thread to finish and clean up
         if let Some(handle) = self.stream_threads[camera_index].take() {
-            // Give it a moment to stop gracefully, then force join
+            println!("Waiting for thread to finish...");
             std::thread::sleep(std::time::Duration::from_millis(500));
             let _ = handle.join();
+            println!("Thread finished");
         }
     }
 
