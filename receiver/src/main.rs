@@ -378,7 +378,7 @@ impl ReceiverApp {
                 udpsrc port={} \
                 caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=mp2t, payload=33\" ! \
                 queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! \
-                netsim drop-probability=0 duplicate-probability=0 delay-distribution=normal ! \
+                netsim drop-probability=0.5 duplicate-probability=0.1 delay-distribution=normal ! \
                 rtp.recv_rtp_sink_0 \
                 rtp. ! rtpjitterbuffer latency=600 do-lost=true ! rtpmp2tdepay ! \
                 tsdemux ! h264parse ! avdec_h264 max-threads=4 ! videoconvert ! videorate ! \
