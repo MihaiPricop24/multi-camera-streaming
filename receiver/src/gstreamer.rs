@@ -76,19 +76,25 @@ fn run_pipeline(
 ) {
     let cmd = format!(
         "gst-launch-1.0 --gst-debug=raptorqdec:5,rtpjitterbuffer:4 \
-        rtpbin latency=200 fec-decoders=\"fec,0=\\\"raptorqdec\\ name=raptor_{}\\ repair-window-tolerance\\=200\\\";\" name=rtp \
-        udpsrc port={} \
-        caps=\"application/x-rtp, payload=96, raptor-scheme-id=(string)6, repair-window=(string)200000, t=(string)1344\" ! \
+        rtpbin latency=200 \
+        fec-decoders=\"fec,0=\\\"raptorqdec\\ name=raptor_{}\\ \
+        repair-window-tolerance\\=200\\\";\" name=rtp \
+        udpsrc port={} address=0.0.0.0 \
+        caps=\"application/x-rtp, payload=96, raptor-scheme-id=(string)6, \
+        repair-window=(string)200000, t=(string)1344\" ! \
         queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! rtp.recv_fec_sink_0_0 \
-        udpsrc port={} \
-        caps=\"application/x-rtp, media=video, clock-rate=90000, encoding-name=mp2t, payload=33\" ! \
+        udpsrc port={} address=0.0.0.0 \
+        caps=\"application/x-rtp, media=video, clock-rate=90000, \
+        encoding-name=mp2t, payload=33\" ! \
         queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! \
         netsim drop-probability=0.5 duplicate-probability=0.1 delay-distribution=normal ! \
         rtp.recv_rtp_sink_0 \
         rtp. ! rtpjitterbuffer latency=600 do-lost=true ! rtpmp2tdepay ! \
         tsdemux ! h264parse ! avdec_h264 max-threads=4 ! videoconvert ! videorate ! \
         video/x-raw,framerate=15/1 ! autovideosink sync=false",
-        camera_index, config.fec_port, config.rtp_port
+        camera_index,
+        config.fec_port, // FEC: bind to all, filter by sender IP
+        config.rtp_port  // RTP: bind to all, filter by sender IP
     );
 
     if let Ok(mut child) = Command::new("cmd")
