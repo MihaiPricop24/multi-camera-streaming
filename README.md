@@ -19,11 +19,20 @@ A Rust application for streaming multiple camera feeds over RTP with RaptorQ For
 ## Project Structure
 ├── sender/          # Multi-camera sender application
 │   ├── src/
-│   │   └── main.rs  # Sender GUI and streaming logic
+│   │   └── backend.rs  # Sender backend connections
+│   │   └── gstreamer.rs  # Sender streaming logic 
+│   │   └── main.rs  # Sender Main function
+│   │   └── types.rs  # Sender Types 
+│   │   └── ui.rs  # Sender GUI
 │   └── Cargo.toml
 ├── receiver/        # Multi-camera receiver application
 │   ├── src/
-│   │   └── main.rs  # Receiver GUI and statistics
+│   │   └── backend.rs  # Receiver backend connections
+│   │   └── gstreamer.rs  # Receiver streaming logic 
+│   │   └── main.rs  # Receiver Main function
+│   │   └── stats_collector.rs  # Receiver statistics collector 
+│   │   └── types.rs  # Receiver Types 
+│   │   └── ui.rs  # Receiver GUI
 │   └── Cargo.toml
 └── README.md
 
