@@ -1,5 +1,6 @@
 mod backend;
 mod gstreamer;
+mod stats_collector;
 mod types;
 mod ui;
 

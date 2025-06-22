@@ -122,7 +122,8 @@ ksvideosrc device-index={} ! \
 videoconvert ! videorate ! video/x-raw,framerate=15/1,width=640,height=480 ! \
 x264enc key-int-max=45 tune=zerolatency speed-preset=veryfast bitrate=2000 ! \
 queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! mpegtsmux ! rtpmp2tpay ssrc={} ! \
-rtp.send_rtp_sink_0 rtp.send_rtp_src_0 ! udpsink host={} port={} sync=false \
+rtp.send_rtp_sink_0 rtp.send_rtp_src_0 !
+udpsink host={} port={} sync=false \
 rtp.send_fec_src_0_0 ! udpsink host={} port={} async=false sync=false",
             config.camera_index, control_index, config.ip, config.port, config.ip, config.fec_port
         )

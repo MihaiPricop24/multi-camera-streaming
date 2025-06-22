@@ -76,11 +76,11 @@ impl ReceiverUI {
     }
 
     pub fn build(&mut self) -> Result<(), nwg::NwgError> {
-        // Create main window - made wider and taller for better stats display
+        // Create main window - made wider for better stats display
         nwg::Window::builder()
-            .size((1200, 250))
+            .size((1400, 280))
             .position((300, 300))
-            .title("Multi-Camera Receiver")
+            .title("Multi-Camera Receiver with REAL Stats")
             .build(&mut self.window)?;
 
         // Build header labels
@@ -123,9 +123,9 @@ impl ReceiverUI {
             .build(&mut self.header_labels[2])?;
 
         nwg::Label::builder()
-            .text("Live Stats")
+            .text("REAL Stream Statistics")
             .position((500, 10))
-            .size((300, 20))
+            .size((800, 20))
             .parent(&self.window)
             .build(&mut self.header_labels[3])?;
 
@@ -133,7 +133,7 @@ impl ReceiverUI {
     }
 
     fn build_camera_row(&mut self, camera_index: usize) -> Result<(), nwg::NwgError> {
-        let y_pos = (40 + camera_index * 50) as i32; // Increased spacing between rows
+        let y_pos = (40 + camera_index * 60) as i32; // Increased spacing for better readability
         let config = self
             .backend
             .borrow()
@@ -173,7 +173,7 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.fec_port_inputs[camera_index])?;
 
-        // Start button - moved left since we removed stats button
+        // Start button
         nwg::Button::builder()
             .text("Start")
             .position((400, y_pos - 5))
@@ -181,11 +181,11 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.start_buttons[camera_index])?;
 
-        // Stats display - moved left and made much wider
+        // Stats display - much wider for comprehensive stats
         nwg::Label::builder()
             .text("Waiting for stream...")
             .position((500, y_pos - 5))
-            .size((680, 25)) // Much wider to prevent text cutoff
+            .size((880, 25)) // Extra wide for all stats
             .parent(&self.window)
             .build(&mut self.stats_displays[camera_index])?;
 
@@ -197,15 +197,18 @@ impl ReceiverUI {
             if self.backend.borrow().is_camera_running(i) {
                 if let Some(stats) = self.backend.borrow().get_camera_stats(i) {
                     let stats_text = format!(
-                        "Rx:{} Lost:{} Rep:{} Rate:{:.1}% Bitrate:{:.1}kbps Lat:{:.1}ms",
+                        "Received:{} Lost:{} Late:{} Sent:{} Repair:{:.1}% Bitrate:{:.1}kbps Latency:{:.1}ms",
                         stats.packets_received,
                         stats.packets_lost,
-                        stats.packets_repaired,
+                        stats.packets_late,
+                        stats.packets_sent,
                         stats.repair_rate,
                         stats.bitrate,
                         stats.latency
                     );
                     self.stats_displays[i].set_text(&stats_text);
+                } else {
+                    self.stats_displays[i].set_text("Collecting stats...");
                 }
             } else {
                 self.stats_displays[i].set_text("Waiting for stream...");
@@ -246,6 +249,8 @@ impl ReceiverUI {
         let any_running = (0..4).any(|i| self.backend.borrow().is_camera_running(i));
         if any_running {
             self.stats_timer.start();
+        } else {
+            self.stats_timer.stop();
         }
     }
 

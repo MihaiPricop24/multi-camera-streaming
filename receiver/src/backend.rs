@@ -1,10 +1,12 @@
 use crate::gstreamer::GStreamerPipeline;
-use crate::types::{CameraState, StreamStats};
+use crate::stats_collector::{StatsCollector, StreamStats};
+use crate::types::{CameraState, CameraConfig};
 use std::sync::Arc;
 
 pub struct CameraBackend {
     cameras: Vec<CameraState>,
     pipelines: Vec<Option<GStreamerPipeline>>,
+    stats_collectors: Vec<Option<Arc<std::sync::Mutex<StatsCollector>>>>,
 }
 
 impl CameraBackend {
@@ -19,6 +21,7 @@ impl CameraBackend {
         Self {
             cameras,
             pipelines: vec![None, None, None, None],
+            stats_collectors: vec![None, None, None, None],
         }
     }
 
@@ -46,14 +49,26 @@ impl CameraBackend {
         }
 
         let camera = &self.cameras[camera_index];
+        
+        // Create stats collector
+        let rtp_port = camera.config.rtp_port.parse::<u16>().unwrap_or(5000);
+        let fec_port = camera.config.fec_port.parse::<u16>().unwrap_or(5002);
+        
+        let mut stats_collector = StatsCollector::new(camera_index, rtp_port, fec_port);
+        if let Err(e) = stats_collector.start() {
+            println!("Warning: Failed to start stats collector for camera {}: {}", camera_index + 1, e);
+        }
+        
+        let stats_collector_arc = Arc::new(std::sync::Mutex::new(stats_collector));
+        self.stats_collectors[camera_index] = Some(Arc::clone(&stats_collector_arc));
+        
+        // Start the main pipeline with stats collector
         let mut pipeline = GStreamerPipeline::new(
             camera_index,
             camera.config.clone(),
             Arc::clone(&camera.receiving),
-            Arc::clone(&camera.stats),
-            Arc::clone(&camera.gst_pid),
+            Some(stats_collector_arc),
         );
-
         pipeline.start();
         self.pipelines[camera_index] = Some(pipeline);
 
@@ -65,8 +80,16 @@ impl CameraBackend {
             return Err("Invalid camera index".to_string());
         }
 
+        // Stop the main pipeline
         if let Some(mut pipeline) = self.pipelines[camera_index].take() {
             pipeline.stop();
+        }
+
+        // Stop the stats collector
+        if let Some(stats_collector_arc) = self.stats_collectors[camera_index].take() {
+            if let Ok(mut stats_collector) = stats_collector_arc.lock() {
+                stats_collector.stop();
+            }
         }
 
         Ok(())
@@ -89,14 +112,32 @@ impl CameraBackend {
     }
 
     pub fn get_camera_stats(&self, camera_index: usize) -> Option<StreamStats> {
-        if camera_index < self.cameras.len() {
-            Some(self.cameras[camera_index].stats.lock().unwrap().clone())
+        if camera_index < self.stats_collectors.len() {
+            if let Some(ref stats_collector_arc) = self.stats_collectors[camera_index] {
+                if let Ok(stats_collector) = stats_collector_arc.lock() {
+                    Some(stats_collector.get_stats())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         } else {
             None
         }
     }
 
-    pub fn get_camera_config(&self, camera_index: usize) -> Option<&crate::types::CameraConfig> {
+    pub fn parse_debug_line(&mut self, camera_index: usize, line: &str) {
+        if camera_index < self.stats_collectors.len() {
+            if let Some(ref mut stats_collector) = self.stats_collectors[camera_index] {
+                if let Ok(mut collector) = stats_collector.lock() {
+                    collector.parse_debug_line(line);
+                }
+            }
+        }
+    }
+
+    pub fn get_camera_config(&self, camera_index: usize) -> Option<&CameraConfig> {
         if camera_index < self.cameras.len() {
             Some(&self.cameras[camera_index].config)
         } else {
