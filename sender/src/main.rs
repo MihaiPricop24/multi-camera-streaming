@@ -22,14 +22,12 @@ fn main() {
         nwg::Event::OnButtonClick => {
             let app_ref = handler_app.borrow();
 
-            // Check refresh button
             if handle == app_ref.refresh_button.handle {
                 drop(app_ref);
                 handler_app.borrow_mut().refresh_cameras();
                 return;
             }
 
-            // Check start buttons
             for (i, controls) in app_ref.camera_controls.iter().enumerate() {
                 if handle == controls.start_button.handle {
                     drop(app_ref);
