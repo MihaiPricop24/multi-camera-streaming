@@ -9,29 +9,23 @@ impl CameraBackend {
 
         println!("Starting camera detection...");
 
-        // Method 1: Test GStreamer directly for each device index with different caps
         for i in 0..6 {
             let mut camera_works = false;
             let mut device_name = format!("Camera Device {}", i);
 
-            // Try different test pipelines for virtual cameras vs physical cameras
             let test_commands = vec![
-                // Standard test
                 format!(
                     "gst-launch-1.0 ksvideosrc device-index={} num-buffers=1 ! videoconvert ! fakesink",
                     i
                 ),
-                // With explicit caps for virtual cameras
                 format!(
                     "gst-launch-1.0 ksvideosrc device-index={} ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! fakesink",
                     i
                 ),
-                // Alternative caps
                 format!(
                     "gst-launch-1.0 ksvideosrc device-index={} ! video/x-raw,width=1280,height=720,framerate=30/1 ! videoconvert ! fakesink",
                     i
                 ),
-                // Try with different formats
                 format!(
                     "gst-launch-1.0 ksvideosrc device-index={} ! video/x-raw ! videoconvert ! fakesink",
                     i
@@ -62,7 +56,6 @@ impl CameraBackend {
                     {
                         camera_works = true;
 
-                        // Try to get device name from error output
                         if stderr_str.contains("device-name") {
                             for line in stderr_str.lines() {
                                 if line.contains("device-name") && line.contains("=") {
@@ -80,7 +73,6 @@ impl CameraBackend {
                             }
                         }
 
-                        // Check for specific camera types
                         if stderr_str.contains("Camo") || device_name.contains("Camo") {
                             device_name = format!("Index {}: Camo Virtual Camera (iPhone)", i);
                         } else if stderr_str.contains("Integrated") || stderr_str.contains("USB") {
@@ -117,7 +109,6 @@ impl CameraBackend {
             }
         }
 
-        // Method 2: Use PowerShell to get device names for reference
         if let Ok(output) = Command::new("powershell")
             .args(&[
                 "-Command",
