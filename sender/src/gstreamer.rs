@@ -43,13 +43,9 @@ impl GStreamerManager {
         streaming: Arc<Mutex<bool>>,
         gst_pid: Arc<Mutex<Option<u32>>>,
     ) {
-        // Try different pipeline configurations for virtual cameras
         let pipeline_configs = vec![
-            // Configuration 1: Standard pipeline
             Self::build_standard_pipeline(&config, control_index),
-            // Configuration 2: With explicit caps for virtual cameras
             Self::build_virtual_camera_pipeline(&config, control_index),
-            // Configuration 3: Alternative resolution for virtual cameras
             Self::build_scaled_pipeline(&config, control_index),
         ];
 
@@ -65,10 +61,8 @@ impl GStreamerManager {
             if let Ok(mut child) = Command::new("cmd").args(&["/C", cmd]).spawn() {
                 let cmd_pid = child.id();
 
-                // Give it time to initialize
                 std::thread::sleep(std::time::Duration::from_millis(2000));
 
-                // Check if it's still running (success indicator)
                 match child.try_wait() {
                     Ok(Some(exit_status)) => {
                         println!(
@@ -76,7 +70,7 @@ impl GStreamerManager {
                             config_idx + 1,
                             exit_status
                         );
-                        continue; // Try next configuration
+                        continue;
                     }
                     Ok(None) => {
                         println!(
@@ -85,16 +79,14 @@ impl GStreamerManager {
                         );
                         pipeline_started = true;
 
-                        // Find the actual gst-launch-1.0.exe process PID
                         Self::find_gstreamer_pid(cmd_pid, &gst_pid);
 
-                        // Main loop - keep running until stopped
                         Self::monitor_pipeline(child, &streaming);
-                        break; // Exit configuration loop
+                        break;
                     }
                     Err(e) => {
                         println!("Error checking pipeline status: {}", e);
-                        continue; // Try next configuration
+                        continue;
                     }
                 }
             } else {
