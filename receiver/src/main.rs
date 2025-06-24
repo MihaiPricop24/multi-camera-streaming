@@ -13,22 +13,18 @@ use ui::ReceiverUI;
 fn main() {
     nwg::init().expect("Failed to init Native Windows GUI");
 
-    // Create backend
     let backend = Rc::new(RefCell::new(CameraBackend::new()));
 
-    // Create UI
     let mut ui = ReceiverUI::new(Rc::clone(&backend));
     ui.build().expect("Failed to build UI");
 
     let ui_rc = Rc::new(RefCell::new(ui));
 
-    // Event handler
     let handler_ui = ui_rc.clone();
     let handler = move |evt, _evt_data, handle| match evt {
         nwg::Event::OnButtonClick => {
             let ui_ref = handler_ui.borrow();
 
-            // Find which start button was clicked
             for i in 0..4 {
                 if let Some(start_handle) = ui_ref.get_button_handle(i, "start") {
                     if handle == *start_handle {
