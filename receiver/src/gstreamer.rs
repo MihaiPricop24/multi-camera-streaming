@@ -45,12 +45,10 @@ impl GStreamerPipeline {
     pub fn stop(&mut self) {
         *self.receiving.lock().unwrap() = false;
 
-        // Kill all GStreamer processes
         let _ = Command::new("taskkill")
             .args(["/F", "/IM", "gst-launch-1.0.exe"])
             .output();
 
-        // Wait for thread to finish
         if let Some(handle) = self.thread_handle.take() {
             std::thread::sleep(std::time::Duration::from_millis(500));
             let _ = handle.join();
@@ -95,7 +93,6 @@ fn run_pipeline(
         .stderr(Stdio::piped())
         .spawn()
     {
-        // Capture and parse stderr for debug output
         if let Some(stderr) = child.stderr.take() {
             let receiving_clone = Arc::clone(&receiving);
             let stats_collector_clone = stats_collector.clone();
@@ -107,11 +104,9 @@ fn run_pipeline(
                     }
                     
                     if let Ok(line_content) = line {
-                        // Only process lines with our target debug info
                         if line_content.contains("Successfully recovered packet") || 
                            line_content.contains("Add Lost timer for #") {
                             
-                            // Send to stats collector if available
                             if let Some(ref stats_collector_arc) = stats_collector_clone {
                                 if let Ok(mut stats_collector) = stats_collector_arc.lock() {
                                     stats_collector.parse_debug_line(&line_content);
@@ -123,7 +118,6 @@ fn run_pipeline(
             });
         }
 
-        // Main pipeline monitoring loop
         loop {
             if !*receiving.lock().unwrap() {
                 let _ = child.kill();
