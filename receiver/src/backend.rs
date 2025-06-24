@@ -50,7 +50,6 @@ impl CameraBackend {
 
         let camera = &self.cameras[camera_index];
         
-        // Create stats collector
         let rtp_port = camera.config.rtp_port.parse::<u16>().unwrap_or(5000);
         let fec_port = camera.config.fec_port.parse::<u16>().unwrap_or(5002);
         
@@ -62,7 +61,6 @@ impl CameraBackend {
         let stats_collector_arc = Arc::new(std::sync::Mutex::new(stats_collector));
         self.stats_collectors[camera_index] = Some(Arc::clone(&stats_collector_arc));
         
-        // Start the main pipeline with stats collector
         let mut pipeline = GStreamerPipeline::new(
             camera_index,
             camera.config.clone(),
@@ -80,12 +78,10 @@ impl CameraBackend {
             return Err("Invalid camera index".to_string());
         }
 
-        // Stop the main pipeline
         if let Some(mut pipeline) = self.pipelines[camera_index].take() {
             pipeline.stop();
         }
 
-        // Stop the stats collector
         if let Some(stats_collector_arc) = self.stats_collectors[camera_index].take() {
             if let Ok(mut stats_collector) = stats_collector_arc.lock() {
                 stats_collector.stop();
