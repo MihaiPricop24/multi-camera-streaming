@@ -1,4 +1,4 @@
-// ui.rs
+
 use crate::backend::CameraBackend;
 use crate::gstreamer::GStreamerManager;
 use crate::types::{CameraInfo, StreamConfig};
@@ -68,7 +68,6 @@ impl SenderApp {
             .title("Multi-Camera Sender with Auto-Detection")
             .build(&mut self.window)?;
 
-        // Refresh button
         nwg::Button::builder()
             .text("Detect Cameras")
             .position((10, 10))
@@ -76,7 +75,6 @@ impl SenderApp {
             .parent(&self.window)
             .build(&mut self.refresh_button)?;
 
-        // Camera count label
         nwg::Label::builder()
             .text("No cameras detected")
             .position((140, 15))
@@ -86,13 +84,11 @@ impl SenderApp {
 
         self.build_headers()?;
 
-        // Initially detect cameras - this should happen BEFORE creating controls
         if let Err(e) = self.detect_cameras() {
             println!(
                 "Warning: Failed to detect cameras during initialization: {}",
                 e
             );
-            // Don't return error, just log it and continue
         }
 
         self.create_camera_controls()?;
@@ -141,26 +137,23 @@ impl SenderApp {
             }
             Err(e) => {
                 println!("Camera detection error: {}", e);
-                self.available_cameras = Vec::new(); // Ensure it's empty on error
+                self.available_cameras = Vec::new();
                 Err(e)
             }
         }
     }
 
     fn create_camera_controls(&mut self) -> Result<(), nwg::NwgError> {
-        // Create controls for up to 6 cameras
         for i in 0..6 {
             let y_pos = 80 + (i * 40);
             let mut controls = CameraControls::default();
 
-            // Camera dropdown
             nwg::ComboBox::builder()
                 .position((10, y_pos))
                 .size((120, 25))
                 .parent(&self.window)
                 .build(&mut controls.camera_dropdown)?;
 
-            // IP input
             nwg::TextInput::builder()
                 .text("192.168.0.101")
                 .position((140, y_pos))
@@ -168,7 +161,6 @@ impl SenderApp {
                 .parent(&self.window)
                 .build(&mut controls.ip_input)?;
 
-            // Port input
             nwg::TextInput::builder()
                 .text(&format!("{}", 5000 + i * 4))
                 .position((250, y_pos))
@@ -176,7 +168,6 @@ impl SenderApp {
                 .parent(&self.window)
                 .build(&mut controls.port_input)?;
 
-            // FEC port input
             nwg::TextInput::builder()
                 .text(&format!("{}", 5002 + i * 4))
                 .position((340, y_pos))
@@ -184,7 +175,6 @@ impl SenderApp {
                 .parent(&self.window)
                 .build(&mut controls.fec_port_input)?;
 
-            // Start button
             nwg::Button::builder()
                 .text("Start")
                 .position((430, y_pos))
@@ -193,8 +183,6 @@ impl SenderApp {
                 .enabled(false)
                 .build(&mut controls.start_button)?;
 
-            // Note: The label field in CameraControls isn't used in the original code
-            // but we need to initialize it to avoid compilation errors
             nwg::Label::builder()
                 .text("")
                 .position((520, y_pos))
@@ -209,13 +197,11 @@ impl SenderApp {
     }
 
     fn update_camera_list(&mut self) {
-        // Update camera count label
         self.camera_count_label.set_text(&format!(
             "Detected {} camera(s)",
             self.available_cameras.len()
         ));
 
-        // Update dropdowns
         for controls in self.camera_controls.iter_mut() {
             let mut items = Vec::new();
 
@@ -286,9 +272,7 @@ impl SenderApp {
         }
     }
 
-    // Add cleanup method for when the app closes
     pub fn cleanup(&mut self) {
-        // Stop all streaming before cleanup
         for i in 0..self.streaming.len() {
             if self.gstreamer_manager.is_streaming(i) {
                 self.gstreamer_manager.stop_pipeline(i);
