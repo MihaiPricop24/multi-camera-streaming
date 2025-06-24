@@ -6,21 +6,17 @@ use std::rc::Rc;
 pub struct ReceiverUI {
     window: nwg::Window,
 
-    // Camera inputs
     sender_ip_inputs: Vec<nwg::TextInput>,
     rtp_port_inputs: Vec<nwg::TextInput>,
     fec_port_inputs: Vec<nwg::TextInput>,
     start_buttons: Vec<nwg::Button>,
 
-    // Labels and displays
     camera_labels: Vec<nwg::Label>,
     stats_displays: Vec<nwg::Label>,
     header_labels: Vec<nwg::Label>,
 
-    // Timer for stats updates
     stats_timer: nwg::AnimationTimer,
 
-    // Backend reference
     backend: Rc<RefCell<CameraBackend>>,
 }
 
@@ -76,22 +72,18 @@ impl ReceiverUI {
     }
 
     pub fn build(&mut self) -> Result<(), nwg::NwgError> {
-        // Create main window - made wider for better stats display
         nwg::Window::builder()
             .size((1400, 280))
             .position((300, 300))
             .title("Multi-Camera Receiver with REAL Stats")
             .build(&mut self.window)?;
 
-        // Build header labels
         self.build_headers()?;
 
-        // Build camera rows
         for i in 0..4 {
             self.build_camera_row(i)?;
         }
 
-        // Build timer
         nwg::AnimationTimer::builder()
             .parent(&self.window)
             .interval(std::time::Duration::from_millis(1000))
@@ -133,7 +125,7 @@ impl ReceiverUI {
     }
 
     fn build_camera_row(&mut self, camera_index: usize) -> Result<(), nwg::NwgError> {
-        let y_pos = (40 + camera_index * 60) as i32; // Increased spacing for better readability
+        let y_pos = (40 + camera_index * 60) as i32;
         let config = self
             .backend
             .borrow()
@@ -141,7 +133,6 @@ impl ReceiverUI {
             .unwrap()
             .clone();
 
-        // Camera label
         nwg::Label::builder()
             .text(&format!("Camera {}:", camera_index + 1))
             .position((10, y_pos))
@@ -149,7 +140,6 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.camera_labels[camera_index])?;
 
-        // IP input
         nwg::TextInput::builder()
             .text(&config.sender_ip)
             .position((80, y_pos - 5))
@@ -157,7 +147,6 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.sender_ip_inputs[camera_index])?;
 
-        // RTP port input
         nwg::TextInput::builder()
             .text(&config.rtp_port)
             .position((200, y_pos - 5))
@@ -165,7 +154,6 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.rtp_port_inputs[camera_index])?;
 
-        // FEC port input
         nwg::TextInput::builder()
             .text(&config.fec_port)
             .position((300, y_pos - 5))
@@ -173,7 +161,6 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.fec_port_inputs[camera_index])?;
 
-        // Start button
         nwg::Button::builder()
             .text("Start")
             .position((400, y_pos - 5))
@@ -181,11 +168,10 @@ impl ReceiverUI {
             .parent(&self.window)
             .build(&mut self.start_buttons[camera_index])?;
 
-        // Stats display - much wider for comprehensive stats
         nwg::Label::builder()
             .text("Waiting for stream...")
             .position((500, y_pos - 5))
-            .size((880, 25)) // Extra wide for all stats
+            .size((880, 25))
             .parent(&self.window)
             .build(&mut self.stats_displays[camera_index])?;
 
@@ -217,7 +203,6 @@ impl ReceiverUI {
     }
 
     pub fn handle_start_button(&mut self, camera_index: usize) {
-        // Update backend config from UI inputs
         let sender_ip = self.sender_ip_inputs[camera_index].text();
         let rtp_port = self.rtp_port_inputs[camera_index].text();
         let fec_port = self.fec_port_inputs[camera_index].text();
@@ -229,7 +214,6 @@ impl ReceiverUI {
             &fec_port,
         );
 
-        // Toggle camera
         if let Err(e) = self.backend.borrow_mut().toggle_camera(camera_index) {
             nwg::simple_message(
                 "Error",
@@ -237,7 +221,6 @@ impl ReceiverUI {
             );
         }
 
-        // Update button text
         let button_text = if self.backend.borrow().is_camera_running(camera_index) {
             "Stop"
         } else {
@@ -245,7 +228,6 @@ impl ReceiverUI {
         };
         self.start_buttons[camera_index].set_text(button_text);
 
-        // Start timer if any camera is running
         let any_running = (0..4).any(|i| self.backend.borrow().is_camera_running(i));
         if any_running {
             self.stats_timer.start();
